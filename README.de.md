@@ -33,6 +33,7 @@ Version 0.1.3.
 14. [Ein Projekt aktualisieren](#14-ein-projekt-aktualisieren)
 15. [Grenzen und offene Punkte](#15-grenzen-und-offene-punkte)
 16. [Incipit weiterentwickeln](#16-incipit-weiterentwickeln)
+17. [Lizenz](#lizenz)
 
 ## 1. Welches Problem es löst
 
@@ -90,13 +91,21 @@ Systemweit wird nichts installiert. Das Binary liegt in
 
 ## 3. Installation
 
-Den Plugin-Ordner klonen oder kopieren, dann entweder für eine Session laden:
+Direkt aus GitHub installieren. Das Repository ist sein eigener Marketplace:
 
 ```
+claude plugin marketplace add tuxie01/Incipit
+claude plugin install incipit@incipit
+```
+
+Oder aus einem lokalen Klon, entweder für eine Session laden:
+
+```
+git clone https://github.com/tuxie01/Incipit.git
 claude --plugin-dir /pfad/zu/Incipit
 ```
 
-oder dauerhaft über das eigene Marketplace-Manifest installieren:
+oder den Klon dauerhaft installieren:
 
 ```
 claude plugin marketplace add /pfad/zu/Incipit
@@ -594,3 +603,15 @@ das Upgrade eines älteren Projekts.
 Ändert sich eine Regel, kommt sie in die Vorlagen-Briefs und als datierter
 Abschnitt nach `server/src/owner.rs` (`update_note`), damit bestehende
 Projekte sie über `incipit upgrade` erhalten.
+
+## Lizenz
+
+Copyright (C) 2026 Ingo Uhlemann
+
+Incipit ist freie Software: Du kannst es unter den Bedingungen der GNU
+General Public License, Version 3, wie von der Free Software Foundation
+veröffentlicht, weitergeben und verändern. Es wird in der Hoffnung
+verbreitet, dass es nützlich ist, aber ohne jede Gewährleistung, sogar ohne
+die implizite Gewährleistung der Marktreife oder der Eignung für einen
+bestimmten Zweck. Der vollständige Text steht in [LICENSE](LICENSE); maßgeblich
+ist die englische Originalfassung.

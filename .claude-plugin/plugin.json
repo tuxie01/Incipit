@@ -6,6 +6,6 @@
   "author": {
     "name": "Ingo Uhlemann"
   },
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "keywords": ["scaffold", "agents", "tickets", "workflow"]
 }
