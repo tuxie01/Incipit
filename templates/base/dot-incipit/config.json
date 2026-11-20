@@ -1,0 +1,44 @@
+{
+  "project": {
+    "name": "",
+    "goal": ""
+  },
+  "backend": "files",
+  "audit_policy": "",
+  "optional_roles": [],
+  "security_policy": "",
+  "owner_decisions": [],
+  "layout": {
+    "source": "src/",
+    "tests": "tests/",
+    "docs": "docs/"
+  },
+  "commands": {
+    "build": "",
+    "lint": "",
+    "test": "",
+    "check": "scripts/check.sh"
+  },
+  "roles": {
+    "lead": {
+      "write_allow": [],
+      "write_deny": []
+    },
+    "architect": {
+      "write_allow": ["docs/"],
+      "write_deny": ["docs/test-plan.md", "docs/legacy-survey.md"]
+    },
+    "implementer": {
+      "write_allow": ["."],
+      "write_deny": ["tests/", "SPEC.md", "scripts/check.sh", "docs/test-plan.md", ".incipit/", "legacy/"]
+    },
+    "tester": {
+      "write_allow": ["tests/", ".incipit/evidence/", "docs/test-plan.md", "scripts/check.sh"],
+      "write_deny": []
+    },
+    "auditor": {
+      "write_allow": [".incipit/evidence/"],
+      "write_deny": []
+    }
+  }
+}

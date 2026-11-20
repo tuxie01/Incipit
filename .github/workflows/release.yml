@@ -1,0 +1,38 @@
+name: release
+
+# Builds the incipit binary for each supported machine when a version tag is
+# pushed, and attaches the binaries to the GitHub release. The asset names
+# match what scripts/install-server.sh looks for in server/dist/.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            asset: incipit-Darwin-arm64
+          - os: ubuntu-latest
+            asset: incipit-Linux-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        run: cargo test --release --locked --manifest-path server/Cargo.toml
+      - name: Build
+        run: cargo build --release --locked --manifest-path server/Cargo.toml
+      - name: Smoke test
+        run: bash server/tests/smoke.sh server/target/release/incipit
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp server/target/release/incipit "${{ matrix.asset }}"
+          gh release create "${{ github.ref_name }}" --generate-notes 2>/dev/null || true
+          gh release upload "${{ github.ref_name }}" "${{ matrix.asset }}" --clobber

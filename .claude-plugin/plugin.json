@@ -1,0 +1,11 @@
+{
+  "name": "incipit",
+  "displayName": "Incipit",
+  "version": "0.1.3",
+  "description": "Project skeleton for Claude Code: scaffold, grill session, toolchain and a five-role agent team with a guarded ticket server.",
+  "author": {
+    "name": "Ingo Uhlemann"
+  },
+  "license": "MIT",
+  "keywords": ["scaffold", "agents", "tickets", "workflow"]
+}

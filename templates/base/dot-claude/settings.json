@@ -1,0 +1,16 @@
+{
+  "enabledMcpjsonServers": ["incipit"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|mcp__incipit__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -x \"$HOME/.incipit/bin/incipit\" || { echo 'incipit guard is not installed (~/.incipit/bin/incipit missing): tool call refused' >&2; exit 2; }; exec \"$HOME/.incipit/bin/incipit\" guard"
+          }
+        ]
+      }
+    ]
+  }
+}

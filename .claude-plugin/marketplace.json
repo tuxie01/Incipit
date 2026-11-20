@@ -1,0 +1,14 @@
+{
+  "name": "incipit",
+  "description": "Incipit: a guarded project skeleton for Claude Code.",
+  "owner": {
+    "name": "Ingo Uhlemann"
+  },
+  "plugins": [
+    {
+      "name": "incipit",
+      "source": "./",
+      "description": "Project skeleton for Claude Code: scaffold, grill session, toolchain and a five-role agent team with a guarded ticket server."
+    }
+  ]
+}

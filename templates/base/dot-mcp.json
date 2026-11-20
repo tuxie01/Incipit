@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "incipit": {
+      "type": "stdio",
+      "command": "${HOME}/.incipit/bin/incipit",
+      "args": ["mcp"]
+    }
+  }
+}
