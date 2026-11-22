@@ -13,7 +13,7 @@ einen Lead-Agenten. Ab dann läuft die Arbeit über Tickets. Ein Ticket-Server
 entscheidet, wer was darf: Nur der Tester kann ein Ticket schließen, und nur
 mit hinterlegter Evidenz.
 
-Version 0.1.3.
+Version 0.1.4.
 
 ## Inhalt
 
@@ -231,14 +231,14 @@ Fünf Rollen sind immer dabei.
 | architect | Dokumentation | legt an, ergänzt; schlägt Spec-Änderungen vor | nein | nein |
 | implementer | Produktquelltext | setzt eigene Tickets auf `implemented` | nein | ja |
 | tester | Tests, Prüfskripte, Evidenz | Urteil, **Schließen**; baut Tester-Tickets | nein | ja |
-| auditor | Evidenz | Audit-Ergebnis | nein | nein |
+| auditor | Evidenz | Audit-Ergebnis | nein | nur lesendes git |
 
 Zwei Rollen sind optional. Die Grill-Session fragt danach; `incipit role add
 <name>` schaltet eine später zu.
 
 | Rolle | Schreibt | Zweck |
 |---|---|---|
-| security | Evidenz | Prüft Tickets mit `security_required` auf Sicherheitsmängel. Ein solches Ticket schließt nicht ohne ihr PASS. |
+| security | Evidenz | Prüft Tickets mit `security_required` auf Sicherheitsmängel. Ein solches Ticket schließt nicht ohne ihr PASS. Nur lesendes git. |
 | researcher | `docs/research/` | Beantwortet eine präzise Frage an der Primärquelle und schreibt die Antwort mit Fundstellen auf. Hat Websuche. |
 
 Die genauen Schreibpfade jeder Rolle stehen in `.incipit/config.json` unter
@@ -431,6 +431,20 @@ kommt, oder `"permissions": {"allow": ["mcp__incipit"]}` in
 `.claude/settings.json` eintragen. Der Eintrag überspringt nur die Abfrage.
 Der Guard prüft weiterhin jeden Aufruf gegen die Rolle.
 
+**Nur lesendes git.** Auditor, Security-Reviewer und Researcher urteilen
+durch Lesen, aber Fragen wie „unverändert seit“ oder „welche Commits gehören
+zu diesem Ticket“ lassen sich nur mit git beantworten. Ihre Shell führt
+deshalb genau einen lesenden git-Befehl pro Aufruf aus (`log`, `show`,
+`diff`, `ls-files`, `blame` und einige mehr) und sonst nichts: keine Pipes,
+Umleitungen, Variablen oder Verkettungen, keine schreibenden Optionen wie
+`--output`, kein `git -c`. Diese Prüfung ist exakt, weil ein Befehl ohne
+Shell-Operatoren genau ein Programm mit seinen Argumenten ist.
+
+**git selbst.** Keine Rolle darf die git-Konfiguration ändern (`git config`,
+`git -c`) oder unter `.git/` schreiben, denn die git-Konfiguration bestimmt,
+welche Programme git ausführt, etwa Hooks, und zwar für jede Rolle, die
+danach committet.
+
 Was exakt ist und was nicht:
 
 - Schreibzugriffe über die Werkzeuge Edit und Write werden exakt geprüft.
@@ -568,9 +582,10 @@ lässt sich gefahrlos wiederholen.
 - **Projekttypen:** eine generische Vorlage. Vorlagen für bestimmte
   Projektarten (Rust, Embedded, Retro) sind als weitere Verzeichnisse unter
   `templates/` geplant, auswählbar mit `INCIPIT_TEMPLATE=<name>`.
-- **Evidenz ohne Shell:** Auditor, Security-Reviewer und Researcher urteilen
-  durch Lesen. Was sich nur durch Ausführen bestätigen lässt, wird so
-  gemeldet und dem Tester überlassen.
+- **Evidenz ohne Ausführen:** Auditor, Security-Reviewer und Researcher
+  lesen Code und git-Historie, bauen und starten aber nichts. Was sich nur
+  durch Ausführen des Produkts bestätigen lässt, wird so gemeldet und dem
+  Tester überlassen.
 
 ## 16. Incipit weiterentwickeln
 

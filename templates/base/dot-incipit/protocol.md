@@ -82,6 +82,13 @@ beyond the five core ones.
 - **researcher** answers one precise question from the primary source and
   writes the answer to `docs/research/`. It has no ticket state of its own.
 
+## Shells
+
+Implementer and tester have a shell. Auditor, security and researcher have a
+read-only git shell: the guard lets through one read-only git command per
+call and nothing else. The lead has no shell. No role may change git
+configuration or write below `.git/`.
+
 ## Decision log
 
 The lead keeps no memory between sessions. Decisions of the owner, open

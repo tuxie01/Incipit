@@ -39,8 +39,96 @@ const TEAM_CONFIG: [&str; 6] = [
     ".incipit/config.json",
     ".incipit/protocol.md",
     ".incipit/state.json",
-    ".git/hooks",
+    ".git",
 ];
+
+/// The same in the form a shell command names them. `.git/` rather than
+/// `.git`, so that `.gitignore` and `.github` stay usable.
+const TEAM_CONFIG_IN_SHELL: [&str; 6] = [
+    ".claude",
+    ".mcp.json",
+    ".incipit/config.json",
+    ".incipit/protocol.md",
+    ".incipit/state.json",
+    ".git/",
+];
+
+/// Roles that judge by reading. Their shell runs read-only git and nothing else.
+const READ_ONLY_ROLES: [&str; 3] = ["auditor", "security", "researcher"];
+
+/// git subcommands that only read the repository. `status` is left out on
+/// purpose: it may refresh and write the index.
+const READ_ONLY_GIT: [&str; 13] = [
+    "log", "show", "diff", "ls-files", "ls-tree", "rev-parse", "rev-list",
+    "blame", "grep", "cat-file", "describe", "merge-base", "shortlog",
+];
+
+/// Options of those subcommands that write a file or run another program.
+const WRITING_GIT_OPTIONS: [&str; 6] = ["--output", "--ext-diff", "--open-files-in-pager", "--paginate", "--exec", "-O"];
+
+/// Split a command line into words the way a shell would for simple
+/// commands: whitespace separates, single and double quotes group.
+fn shell_words(command: &str) -> Result<Vec<String>, String> {
+    let mut words = Vec::new();
+    let mut current = String::new();
+    let mut in_word = false;
+    let mut quote: Option<char> = None;
+    for c in command.chars() {
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => current.push(c),
+            None if c == '\'' || c == '"' => {
+                quote = Some(c);
+                in_word = true;
+            }
+            None if c.is_whitespace() => {
+                if in_word {
+                    words.push(std::mem::take(&mut current));
+                    in_word = false;
+                }
+            }
+            None => {
+                current.push(c);
+                in_word = true;
+            }
+        }
+    }
+    if quote.is_some() {
+        return Err("unbalanced quote".into());
+    }
+    if in_word {
+        words.push(current);
+    }
+    Ok(words)
+}
+
+/// Accept exactly one read-only git command, nothing else. Unlike the text
+/// match for the other roles this is exact: a command without shell
+/// operators is one program with its arguments, and the program is git.
+pub fn read_only_git(command: &str) -> Result<(), String> {
+    const OPERATORS: [char; 11] = ['\n', '\r', ';', '&', '|', '`', '$', '>', '<', '(', ')'];
+    if let Some(c) = command.chars().find(|c| OPERATORS.contains(c) || *c == '\\') {
+        return Err(format!("no shell operators allowed (found {c:?}); run one git command per call"));
+    }
+    let words = shell_words(command)?;
+    match words.first().map(String::as_str) {
+        Some("git") => {}
+        _ => return Err("only read-only git commands are allowed".into()),
+    }
+    let sub = words.get(1).map(String::as_str).unwrap_or("");
+    if !READ_ONLY_GIT.contains(&sub) {
+        return Err(format!(
+            "'git {sub}' is not a read-only command here (allowed: git {})",
+            READ_ONLY_GIT.join(", git ")
+        ));
+    }
+    for word in &words[2..] {
+        if let Some(opt) = WRITING_GIT_OPTIONS.iter().find(|o| word == *o || word.starts_with(&format!("{o}=")) || (o.len() == 2 && word.starts_with(**o))) {
+            return Err(format!("the option {opt} writes a file or runs a program"));
+        }
+    }
+    Ok(())
+}
 
 pub enum Decision {
     Allow,
@@ -133,6 +221,14 @@ fn check_write(root: &Path, cwd: &Path, file: &str, role: &Option<String>) -> De
 }
 
 fn check_bash(command: &str, role: &Option<String>) -> Decision {
+    if let Some(r) = role {
+        if READ_ONLY_ROLES.contains(&r.as_str()) {
+            return match read_only_git(command) {
+                Ok(()) => Decision::Allow,
+                Err(e) => deny(format!("The {r} role has a read-only git shell: {e}.")),
+            };
+        }
+    }
     let cmd = command.to_lowercase();
     if let Some(path) = SERVER_ONLY.iter().find(|p| cmd.contains(**p)) {
         return deny(format!("Shell access to {path} is blocked. Use the task_* tools."));
@@ -144,10 +240,16 @@ fn check_bash(command: &str, role: &Option<String>) -> Decision {
     if role == "lead" {
         return deny("The lead runs no shell commands. Hand the work to a worker.");
     }
-    for path in TEAM_CONFIG {
+    for path in TEAM_CONFIG_IN_SHELL {
         if cmd.contains(path) {
             return deny(format!("Shell access to '{path}' is owner-only."));
         }
+    }
+    // git configuration decides which programs git runs (hooks, pagers,
+    // diff drivers) for every role that commits after this one.
+    let words: Vec<&str> = cmd.split_whitespace().collect();
+    if words.windows(2).any(|w| w[0].ends_with("git") && (w[1] == "config" || w[1] == "-c" || w[1].starts_with("--config-env"))) {
+        return deny("Changing git configuration is owner-only.");
     }
     // The incipit CLI (activate, phase, ...) is the owner's tool.
     let calls_cli = cmd
@@ -226,5 +328,50 @@ pub fn run(root: &Path) {
             }
         });
         println!("{out}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::read_only_git;
+
+    #[test]
+    fn read_only_git_accepts_plain_reads() {
+        for ok in [
+            "git log --oneline -- src/",
+            "git show 4bd3c2c:src/main.c",
+            "git diff 858a047 cc0edbe -- tests/",
+            "git log --format='%h %s' --grep=T-0014",
+            "git ls-files references/",
+            "git blame -L 10,20 src/zstr.c",
+        ] {
+            assert!(read_only_git(ok).is_ok(), "{ok}");
+        }
+    }
+
+    #[test]
+    fn read_only_git_refuses_everything_else() {
+        for bad in [
+            "git status",
+            "git commit -am x",
+            "git checkout -- src/main.c",
+            "git config core.pager cat",
+            "git -c core.pager=sh log",
+            "git -C /tmp log",
+            "git log > out.txt",
+            "git log; rm -rf src",
+            "git log && touch x",
+            "git log | sh",
+            "git log $(touch x)",
+            "git log `touch x`",
+            "git diff --output=/tmp/x",
+            "git diff --ext-diff",
+            "git grep -Ovim foo",
+            "GIT_PAGER=sh git log",
+            "ls src",
+            "git log 'unbalanced",
+        ] {
+            assert!(read_only_git(bad).is_err(), "{bad}");
+        }
     }
 }

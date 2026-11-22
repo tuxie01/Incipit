@@ -319,11 +319,31 @@ fn update_note(version: &str, role: &str) -> Option<&'static str> {
   before `task_close` works. If closing is refused for that reason, leave the
   ticket `accepted` and report that the security review is pending.
 ",
+        ("0.1.4", "lead") => "- The auditor (and the security reviewer, if the project has one) now has
+  a read-only git shell. It checks \"unchanged since\", \"which commits\" and
+  \"what did this ticket change\" itself. Do not hand the git checks of an
+  audit to the tester: the tester built or verified the ticket and would be
+  checking its own work.
+",
+        ("0.1.4", "auditor") | ("0.1.4", "security") => "- You now have a shell that runs read-only git and nothing else: `git log`,
+  `show`, `diff`, `ls-files`, `ls-tree`, `rev-parse`, `rev-list`, `blame`,
+  `grep`, `cat-file`, `describe`, `merge-base`, `shortlog`. One command per
+  call, without pipes, redirections, variables or `&&`; the guard refuses
+  anything else. Use it for every claim about change: which commits belong to
+  the ticket (`git log --grep=<id>`), what they changed
+  (`git show --stat <commit>`), whether something is unchanged since a commit
+  (`git diff <commit> -- <path>`). Such a claim is `read` only if you ran the
+  command; name it in the evidence. You still build and run nothing.
+",
+        ("0.1.4", "implementer") | ("0.1.4", "tester") => "- Changing git configuration (`git config`, `git -c`) and writing below
+  `.git/` are owner-only now. Git configuration decides which programs git
+  runs for every role that commits after you.
+",
         _ => return None,
     })
 }
 
-const VERSIONS: [&str; 2] = ["0.1.2", "0.1.3"];
+const VERSIONS: [&str; 3] = ["0.1.2", "0.1.3", "0.1.4"];
 
 fn tools_line(text: &str) -> Option<&str> {
     // Frontmatter only: stop at the closing delimiter.

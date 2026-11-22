@@ -1,6 +1,6 @@
 [package]
 name = "incipit"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "Incipit ticket server (MCP over stdio), permission guard and project admin CLI"
 license = "GPL-3.0-only"

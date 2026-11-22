@@ -36,7 +36,10 @@ not a pointer to this conversation. The conversation is gone after a restart.
 - **implementer**: builds one ticket of role `implementer`.
 - **tester**: verifies tickets and is the only one who can close one. Also
   builds tickets of role `tester` (test tools, harness, checks).
-- **auditor**: checks one ticket against the spec, read-only.
+- **auditor**: checks one ticket against the spec, read-only. Its shell runs
+  read-only git, so it checks "unchanged since" and "which commits" itself.
+  Do not hand the git checks of an audit to the tester: the tester built or
+  verified the ticket and would be checking its own work.
 
 Some projects have further roles; `optional_roles` in `.incipit/config.json`
 says which, and you can only start those.
@@ -127,3 +130,4 @@ briefly: what was finished, what is next, what needs a decision.
 
 <!-- incipit-update 0.1.2 -->
 <!-- incipit-update 0.1.3 -->
+<!-- incipit-update 0.1.4 -->

@@ -306,6 +306,34 @@ guard "unknown agent writes nothing" deny "$(hook Explore Write '{"file_path":"s
 guard "owner writes source"         allow "$(hook '' Write '{"file_path":"src/main.rs"}')"
 guard "owner writes settings"       allow "$(hook '' Edit '{"file_path":".claude/settings.json"}')"
 
+# read-only git shell
+guard "auditor reads git history"   allow "$(hook auditor Bash '{"command":"git log --oneline --grep=T-0014"}')"
+guard "auditor diffs since a commit" allow "$(hook auditor Bash '{"command":"git diff 858a047 -- tests/ src/"}')"
+guard "auditor reads ticket history" allow "$(hook auditor Bash '{"command":"git log -- .incipit/tasks/T-0014.json"}')"
+guard "auditor quoted format"       allow "$(hook auditor Bash "{\"command\":\"git log --format='%h %s' -3\"}")"
+guard "auditor may not commit"      deny  "$(hook auditor Bash '{"command":"git commit -am x"}')"
+guard "auditor may not checkout"    deny  "$(hook auditor Bash '{"command":"git checkout -- src/main.c"}')"
+guard "auditor no status"           deny  "$(hook auditor Bash '{"command":"git status"}')"
+guard "auditor no other program"    deny  "$(hook auditor Bash '{"command":"ls src"}')"
+guard "auditor no pipe"             deny  "$(hook auditor Bash '{"command":"git log | sh"}')"
+guard "auditor no chaining"         deny  "$(hook auditor Bash '{"command":"git log && touch x"}')"
+guard "auditor no redirect"         deny  "$(hook auditor Bash '{"command":"git show HEAD > src/main.c"}')"
+guard "auditor no substitution"     deny  "$(hook auditor Bash '{"command":"git log $(touch x)"}')"
+guard "auditor no output option"    deny  "$(hook auditor Bash '{"command":"git diff --output=src/x HEAD"}')"
+guard "auditor no -c"               deny  "$(hook auditor Bash '{"command":"git -c core.pager=sh log"}')"
+guard "security reads git"          allow "$(hook security Bash '{"command":"git show --stat HEAD"}')"
+guard "researcher reads git"        allow "$(hook researcher Bash '{"command":"git log -5"}')"
+guard "researcher no other program" deny  "$(hook researcher Bash '{"command":"curl x"}')"
+
+# git configuration and .git/
+guard "implementer no git config"   deny  "$(hook implementer Bash '{"command":"git config core.hooksPath /tmp/h"}')"
+guard "tester no git -c"            deny  "$(hook tester Bash '{"command":"git -c core.hooksPath=/tmp/h commit -am x"}')"
+guard "implementer no write in .git" deny "$(hook implementer Bash '{"command":"echo x > .git/hooks/pre-commit"}')"
+guard "implementer no Edit of .git/config" deny "$(hook implementer Edit '{"file_path":".git/config"}')"
+guard "implementer reads .gitignore" allow "$(hook implementer Bash '{"command":"cat .gitignore"}')"
+guard "implementer commits"         allow "$(hook implementer Bash '{"command":"git add -A && git commit -m T-0005"}')"
+guard "owner may configure git"     allow "$(hook '' Bash '{"command":"git config user.name Ingo"}')"
+
 # shell
 guard "implementer runs cargo"      allow "$(hook implementer Bash '{"command":"cargo test"}')"
 guard "shell touching tickets"      deny  "$(hook implementer Bash '{"command":"sed -i s/open/closed/ .incipit/tasks/T-0001.json"}')"
@@ -375,6 +403,8 @@ out="$("$BIN" upgrade)"
 expect "upgrade is idempotent" 'kept    .claude/agents/tester.md' "$out"
 [ "$(grep -c 'Rules changed in Incipit 0.1.2' "$WORK/.claude/agents/lead.md")" = 1 ] && ok || bad "rules section appended once" "more than once"
 
+expect "0.1.4 rules are appended too" 'Rules changed in Incipit 0.1.4' "$(cat "$WORK/.claude/agents/auditor.md")"
+expect "auditor gains the git shell" 'Write, Bash, mcp__incipit__task_list' "$(sed -n 4p "$WORK/.claude/agents/auditor.md")"
 expect "0.1.3 rules are appended too" 'Rules changed in Incipit 0.1.3' "$(cat "$WORK/.claude/agents/lead.md")"
 expect "lead gains the decision log" 'mcp__incipit__decision_log' "$(sed -n 4p "$WORK/.claude/agents/lead.md")"
 [ "$(grep -c 'incipit-update 0.1.3' "$WORK/.claude/agents/auditor.md")" = 1 ] && ok || bad "roles without new rules get the mark once" "$(grep -c 'incipit-update 0.1.3' "$WORK/.claude/agents/auditor.md")"

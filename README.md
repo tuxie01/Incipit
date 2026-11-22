@@ -12,7 +12,7 @@ checks whether the goal is reached, and hands the project to a lead agent.
 From then on the work runs on tickets. A ticket server decides who may do
 what: only the tester can close a ticket, and only with recorded evidence.
 
-Version 0.1.3.
+Version 0.1.4.
 
 ## Contents
 
@@ -219,14 +219,14 @@ Five roles are always present.
 | architect | documentation | creates, amends; proposes spec changes | no | no |
 | implementer | product source | moves its own tickets to `implemented` | no | yes |
 | tester | tests, check scripts, evidence | verdict, **close**; builds tester tickets | no | yes |
-| auditor | evidence | audit result | no | no |
+| auditor | evidence | audit result | no | read-only git |
 
 Two roles are optional. The grill session asks; `incipit role add <name>`
 switches one on later.
 
 | Role | Writes | Purpose |
 |---|---|---|
-| security | evidence | Reviews tickets marked `security_required` for security defects. Such a ticket cannot close without its PASS. |
+| security | evidence | Reviews tickets marked `security_required` for security defects. Such a ticket cannot close without its PASS. Read-only git shell. |
 | researcher | `docs/research/` | Answers one precise question from the primary source and writes the answer down with its sources. Has web search. |
 
 The exact write paths of each role are in `.incipit/config.json` under
@@ -412,6 +412,18 @@ decides: approve the tool when asked, or add
 entry skips the prompt only. The guard still checks every call against the
 role.
 
+**Read-only git.** Auditor, security reviewer and researcher judge by
+reading, but "unchanged since" and "which commits belong to this ticket" can
+only be answered from git. Their shell therefore runs exactly one read-only
+git command per call (`log`, `show`, `diff`, `ls-files`, `blame` and a few
+more) and nothing else: no pipes, redirections, variables or chaining, no
+writing options such as `--output`, no `git -c`. This check is exact, because
+a command without shell operators is one program with its arguments.
+
+**git itself.** No role may change git configuration (`git config`,
+`git -c`) or write below `.git/`, because git configuration decides which
+programs git runs, for example hooks, for every role that commits later.
+
 What is exact and what is not:
 
 - Writes through the Edit and Write tools are checked exactly. Paths are
@@ -543,9 +555,10 @@ was written for the project stays. The command can be run again safely.
 - **Project types:** one generic template. Templates for specific kinds of
   project (Rust, embedded, retro) are planned as further directories below
   `templates/`, selected with `INCIPIT_TEMPLATE=<name>`.
-- **Evidence without a shell:** auditor, security reviewer and researcher
-  judge by reading. What can only be confirmed by running something is
-  reported as such and left to the tester.
+- **Evidence without running:** auditor, security reviewer and researcher
+  read code and git history but build and run nothing. What can only be
+  confirmed by running the product is reported as such and left to the
+  tester.
 
 ## 16. Developing Incipit
 
