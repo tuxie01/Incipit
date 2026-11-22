@@ -339,11 +339,36 @@ fn update_note(version: &str, role: &str) -> Option<&'static str> {
   `.git/` are owner-only now. Git configuration decides which programs git
   runs for every role that commits after you.
 ",
+        ("0.1.5", "lead") => "- Every worker commits its own work with `task_commit`. The server takes
+  only the files of the calling role and the state of the named ticket, so
+  workers can run side by side without their files ending up in each other's
+  commits. The rule \"git add -A\" of 0.1.3 is gone. If `incipit status`
+  shows uncommitted files that no worker is about to commit, tell the owner
+  which ones.
+",
+        ("0.1.5", "implementer") => "- `git add -A` is gone. Commit with `task_commit` (your role, the ticket
+  id, one line). The server commits your files and the ticket's state and
+  nothing of other roles. `git add`, `git commit` and every other command
+  that changes the index, a branch or the history are blocked for you.
+",
+        ("0.1.5", "tester") => "- `git add -A` is gone. Commit with `task_commit` (your role, the ticket
+  id, one line): before the verdict, before closing (it takes the evidence of
+  auditor and security reviewer along), and once more after closing so the
+  receipt is committed. `git add`, `git commit` and every other command that
+  changes the index, a branch or the history are blocked for you.
+",
+        ("0.1.5", "architect") | ("0.1.5", "researcher") => "- Commit what you wrote with `task_commit`: your role, the id of the
+  ticket it belongs to if there is one, and one line. The server takes only
+  your files.
+",
+        ("0.1.5", "auditor") | ("0.1.5", "security") => "- After recording your result, commit the evidence with `task_commit`:
+  your role and the ticket id.
+",
         _ => return None,
     })
 }
 
-const VERSIONS: [&str; 3] = ["0.1.2", "0.1.3", "0.1.4"];
+const VERSIONS: [&str; 4] = ["0.1.2", "0.1.3", "0.1.4", "0.1.5"];
 
 fn tools_line(text: &str) -> Option<&str> {
     // Frontmatter only: stop at the closing delimiter.

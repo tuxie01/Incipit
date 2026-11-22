@@ -12,7 +12,7 @@ checks whether the goal is reached, and hands the project to a lead agent.
 From then on the work runs on tickets. A ticket server decides who may do
 what: only the tester can close a ticket, and only with recorded evidence.
 
-Version 0.1.4.
+Version 0.1.5.
 
 ## Contents
 
@@ -312,6 +312,7 @@ and reports any evidence file that is missing or changed.
 | `spec_propose` | architect | propose a spec change |
 | `decision_log` | lead | append to the decision log |
 | `decision_list` | everyone | read the decision log |
+| `task_commit` | all but the lead | commit own files and the ticket's state |
 
 ## 7. Spec changes
 
@@ -422,7 +423,9 @@ a command without shell operators is one program with its arguments.
 
 **git itself.** No role may change git configuration (`git config`,
 `git -c`) or write below `.git/`, because git configuration decides which
-programs git runs, for example hooks, for every role that commits later.
+programs git runs, for example hooks. Roles with a full shell cannot change
+the index, branches or history either (`add`, `commit`, `checkout`, `reset`,
+`stash`, `push` and similar); commits go through `task_commit`.
 
 What is exact and what is not:
 
@@ -518,8 +521,13 @@ ticket, and every request to weaken a check. Some steps are yours alone, and
 the lead gives you the command: withdrawing a ticket, applying a spec
 proposal.
 
-Implementer and tester commit with `git add -A`, which takes along the ticket
-state and the documents of roles that have no shell.
+Every worker commits its own work with `task_commit`. The server takes only
+the files that belong to the calling role, by the write rules (the role with
+the longest matching `write_allow` prefix owns a file), plus the ticket file
+and the evidence of the named ticket. Files of other roles stay uncommitted,
+so workers can run side by side and a ticket's commit holds only what belongs
+to it. Roles cannot run `git add`, `git commit` or other commands that change
+the index, a branch or the history.
 
 `/incipit:feedback` asks a session where the plugin itself got in the way.
 

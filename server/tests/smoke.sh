@@ -331,7 +331,17 @@ guard "tester no git -c"            deny  "$(hook tester Bash '{"command":"git -
 guard "implementer no write in .git" deny "$(hook implementer Bash '{"command":"echo x > .git/hooks/pre-commit"}')"
 guard "implementer no Edit of .git/config" deny "$(hook implementer Edit '{"file_path":".git/config"}')"
 guard "implementer reads .gitignore" allow "$(hook implementer Bash '{"command":"cat .gitignore"}')"
-guard "implementer commits"         allow "$(hook implementer Bash '{"command":"git add -A && git commit -m T-0005"}')"
+guard "implementer no git add"      deny  "$(hook implementer Bash '{"command":"git add -A && git commit -m T-0005"}')"
+guard "tester no git commit"        deny  "$(hook tester Bash '{"command":"git commit -am T-0005"}')"
+guard "implementer no checkout"     deny  "$(hook implementer Bash '{"command":"git checkout -- docs/"}')"
+guard "implementer no stash"        deny  "$(hook implementer Bash '{"command":"cargo test; git stash"}')"
+guard "tester no push"              deny  "$(hook tester Bash '{"command":"git push"}')"
+guard "implementer may log"         allow "$(hook implementer Bash '{"command":"git log --oneline -3"}')"
+guard "implementer may commit via the server" allow "$(hook implementer mcp__incipit__task_commit '{"role":"implementer","id":"T-0001","message":"x"}')"
+guard "commit under a foreign role" deny  "$(hook implementer mcp__incipit__task_commit '{"role":"tester","message":"x"}')"
+guard "lead may not commit"         deny  "$(hook lead mcp__incipit__task_commit '{"role":"lead","message":"x"}')"
+guard "researcher may commit"       allow "$(hook researcher mcp__incipit__task_commit '{"role":"researcher","message":"x"}')"
+guard "owner may use git"           allow "$(hook '' Bash '{"command":"git add -A && git commit -m x"}')"
 guard "owner may configure git"     allow "$(hook '' Bash '{"command":"git config user.name Ingo"}')"
 
 # shell
@@ -403,6 +413,8 @@ out="$("$BIN" upgrade)"
 expect "upgrade is idempotent" 'kept    .claude/agents/tester.md' "$out"
 [ "$(grep -c 'Rules changed in Incipit 0.1.2' "$WORK/.claude/agents/lead.md")" = 1 ] && ok || bad "rules section appended once" "more than once"
 
+expect "0.1.5 rules are appended too" 'Rules changed in Incipit 0.1.5' "$(cat "$WORK/.claude/agents/implementer.md")"
+expect "implementer gains task_commit" 'mcp__incipit__task_commit' "$(sed -n 4p "$WORK/.claude/agents/implementer.md")"
 expect "0.1.4 rules are appended too" 'Rules changed in Incipit 0.1.4' "$(cat "$WORK/.claude/agents/auditor.md")"
 expect "auditor gains the git shell" 'Write, Bash, mcp__incipit__task_list' "$(sed -n 4p "$WORK/.claude/agents/auditor.md")"
 expect "0.1.3 rules are appended too" 'Rules changed in Incipit 0.1.3' "$(cat "$WORK/.claude/agents/lead.md")"
@@ -501,6 +513,53 @@ expect "status shows pending proposals" 'spec proposals pending: 1' "$out"
 expect "status shows open questions" 'Which TeraDesk binary?' "$out"
 expect "status names the owner's step" 'incipit spec apply P-0003' "$out"
 expect "status finds the superseded ticket still in the queue" 'incipit ticket withdraw T-0004 "superseded by T-' "$out"
+
+# --- task_commit ---------------------------------------------------------
+if command -v git >/dev/null 2>&1; then
+  rm -rf "$WORK/.git"
+  git -C "$WORK" init -q
+  git -C "$WORK" config user.name owner && git -C "$WORK" config user.email owner@example.org
+  git -C "$WORK" add -A >/dev/null 2>&1 && git -C "$WORK" commit -qm base
+  out="$(call task_create '{"title":"Commit test","scope":"s","spec_ref":"SPEC.md#5","acceptance":["a"]}')"
+  CID="$(printf '%s' "$out" | sed -n 's/.*created \(T-[0-9]*\).*/\1/p')"
+  mkdir -p "$WORK/docs/design" "$WORK/docs/research"
+  echo 'int x;' > "$WORK/src/new.c"
+  echo design > "$WORK/docs/design/sys.md"
+  echo note > "$WORK/docs/research/thing.md"
+  echo test > "$WORK/tests/new.sh"
+  echo evidence > "$WORK/.incipit/evidence/$CID-test.md"
+  echo other > "$WORK/.incipit/evidence/T-0001-extra.md"
+  refuse "commit needs a message" "$(call task_commit "{\"role\":\"implementer\",\"id\":\"$CID\"}")"
+  refuse "commit needs a known ticket" "$(call task_commit '{"role":"implementer","id":"T-0999","message":"x"}')"
+  refuse "lead has no commit" "$(call task_commit '{"role":"lead","message":"x"}')"
+  out="$(call task_commit "{\"role\":\"implementer\",\"id\":\"$CID\",\"message\":\"Add new.c\"}")"
+  expect "implementer commit succeeds" 'committed ' "$out"
+  expect "others are left and named" 'left uncommitted, not yours' "$out"
+  files="$(git -C "$WORK" show --name-only --format= HEAD)"
+  expect "commit has the implementer's file" 'src/new.c' "$files"
+  expect "commit has the ticket file" ".incipit/tasks/$CID.json" "$files"
+  expect "commit has the ticket's evidence" ".incipit/evidence/$CID-test.md" "$files"
+  case "$files" in *docs/design*|*docs/research*|*tests/new.sh*|*T-0001-extra*) bad "commit holds files of other roles" "$files" ;; *) ok ;; esac
+  expect "subject starts with the ticket" "$CID: Add new.c" "$(git -C "$WORK" log -1 --format=%s)"
+  expect "trailer names the role" 'Incipit-Role: implementer' "$(git -C "$WORK" log -1 --format=%b)"
+  out="$(call task_commit "{\"role\":\"implementer\",\"id\":\"$CID\",\"message\":\"again\"}")"
+  refuse "nothing left for the implementer" "$out"
+  expect "refusal says why" 'nothing of the implementer role to commit' "$out"
+  expect "researcher commits without a ticket" 'docs/research/thing.md' "$(call task_commit '{"role":"researcher","message":"Thing version note"}')"
+  expect "architect commits its notes" 'docs/design/sys.md' "$(call task_commit '{"role":"architect","message":"Design note"}')"
+  expect "tester commits its test" 'tests/new.sh' "$(call task_commit '{"role":"tester","message":"New test"}')"
+  expect "evidence of another ticket stays" '.incipit/evidence/T-0001-extra.md' "$(git -C "$WORK" status --porcelain)"
+  git -C "$WORK" rm -q "$WORK/src/new.c" 2>/dev/null || rm -f "$WORK/src/new.c"
+  git -C "$WORK" reset -q 2>/dev/null
+  expect "a deletion is committed" 'committed ' "$(call task_commit "{\"role\":\"implementer\",\"id\":\"$CID\",\"message\":\"Remove new.c\"}")"
+  case "$(git -C "$WORK" ls-files src/new.c)" in "") ok ;; *) bad "deleted file is gone from the repository" "still tracked" ;; esac
+  echo staged-by-someone > "$WORK/docs/design/other.md"
+  git -C "$WORK" add docs/design/other.md
+  echo more > "$WORK/src/more.c"
+  call task_commit "{\"role\":\"implementer\",\"id\":\"$CID\",\"message\":\"More\"}" >/dev/null
+  case "$(git -C "$WORK" show --name-only --format= HEAD)" in *other.md*) bad "something staged by another stays out" "included" ;; *) ok ;; esac
+  rm -rf "$WORK/.git"
+fi
 
 echo "smoke: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

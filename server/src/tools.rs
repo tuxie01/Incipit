@@ -30,6 +30,7 @@ pub fn allowed_roles(tool: &str) -> Option<&'static [&'static str]> {
         "task_audit" => &["auditor"],
         "task_security" => &["security"],
         "decision_log" => &["lead"],
+        "task_commit" => &["architect", "implementer", "tester", "auditor", "security", "researcher"],
         _ => return None,
     })
 }
@@ -42,7 +43,7 @@ pub fn is_read(tool: &str) -> bool {
 }
 
 pub fn carries_role(tool: &str) -> bool {
-    tool == "task_comment" || tool == "task_status"
+    tool == "task_comment" || tool == "task_status" || tool == "task_commit"
 }
 
 pub fn definitions() -> Value {
@@ -138,6 +139,15 @@ pub fn definitions() -> Value {
                 "verdict": {"type": "string", "enum": ["PASS", "FAIL"]},
                 "evidence": evidence,
                 "note": {"type": "string"}
+            }}
+        },
+        {
+            "name": "task_commit",
+            "description": "Commit your own work. The server stages only the changed files that belong to your role (by the write rules in .incipit/config.json), plus the ticket file and the evidence of the ticket you name, plus the decision log and spec proposals, and commits exactly those. Files of other roles stay uncommitted, so workers running in parallel do not mix. Use this instead of git add and git commit, which are blocked for roles. Without `id` it commits your files without a ticket, for example design notes or research notes.",
+            "inputSchema": {"type": "object", "required": ["role", "message"], "properties": {
+                "role": {"type": "string", "enum": ["architect", "implementer", "tester", "auditor", "security", "researcher"], "description": "Your own role."},
+                "id": {"type": "string", "description": "Ticket id. Its ticket file and its evidence files are committed along. The commit message starts with it."},
+                "message": {"type": "string", "description": "One line: what the commit contains."}
             }}
         },
         {
@@ -581,6 +591,7 @@ pub fn call(root: &Path, store: &dyn Backend, tool: &str, args: &Value) -> Resul
             Ok(format!("{} security review {} recorded, status {}", ticket.id, verdict, ticket.status))
         }
         "decision_log" => crate::decisions::log(root, args),
+        "task_commit" => crate::commit::commit(root, store, args),
         "decision_list" => crate::decisions::list(root, args),
         "task_close" => {
             let (commit, tree_clean) = crate::util::git_state(root);

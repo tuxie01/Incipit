@@ -79,11 +79,12 @@ terminal). The same goes for the spec: the architect files a proposal, the
 owner applies it (`incipit spec apply <id>`). Tell the owner the exact command
 when one of these is due.
 
-Implementer and tester commit with `git add -A`, which takes along the ticket
-state and the documents of roles that have no shell. If files are left
-uncommitted and no worker is about to commit, give the owner the command:
-`git add -A && git commit -m "..."`. The owner sees everything that is due
-with `incipit status` in a terminal.
+Every worker commits its own work with `task_commit`: the server takes only
+the files of that role and the state of the named ticket, so workers can run
+side by side without their files ending up in each other's commits. If
+`incipit status` shows uncommitted files that no worker is about to commit,
+tell the owner which ones. The owner sees everything that is due with
+`incipit status` in a terminal.
 
 Never run two workers on the same ticket at once. Believe no report: after
 each STATUS block, confirm the ticket state with `task_get` before the next
@@ -131,3 +132,4 @@ briefly: what was finished, what is next, what needs a decision.
 <!-- incipit-update 0.1.2 -->
 <!-- incipit-update 0.1.3 -->
 <!-- incipit-update 0.1.4 -->
+<!-- incipit-update 0.1.5 -->

@@ -1,6 +1,7 @@
 //! incipit: ticket server (MCP), permission guard (hook) and owner CLI in one binary.
 
 mod admin;
+mod commit;
 mod config;
 mod decisions;
 mod guard;

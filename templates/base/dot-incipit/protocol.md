@@ -65,6 +65,7 @@ audit, so that the builder is never the only judge.
 | one-line note | `task_comment` | all but the lead |
 | read | `task_list`, `task_get`, `decision_list` | everyone |
 | record a decision, question, answer or note | `decision_log` | lead |
+| commit own work, with the ticket's state | `task_commit` | all but the lead |
 | propose a spec change | `spec_propose` | architect |
 | take a ticket out of the queue | `incipit ticket withdraw <id> <reason>` | owner |
 | apply or reject a spec proposal | `incipit spec apply <id>`, `incipit spec reject <id>` | owner |
@@ -84,7 +85,8 @@ beyond the five core ones.
 
 ## Shells
 
-Implementer and tester have a shell. Auditor, security and researcher have a
+Implementer and tester have a shell, but cannot change the git index,
+branches or history; they commit through `task_commit`. Auditor, security and researcher have a
 read-only git shell: the guard lets through one read-only git command per
 call and nothing else. The lead has no shell. No role may change git
 configuration or write below `.git/`.
@@ -117,10 +119,15 @@ was clean, the evidence files with their hashes, and a hash over the ticket's
 criteria and amendments. `incipit ticket verify` checks all closed tickets
 against their receipts.
 
-Builders commit before they report: the implementer before `implemented`, the
-tester before the verdict and before closing. They commit with `git add -A`,
-which takes along the ticket state and the documents of roles without a
-shell.
+Workers commit through `task_commit`, before they report: the implementer
+before `implemented`, the tester before the verdict and once more after
+closing, everyone else after writing a document or evidence. The server
+stages only the changed files that the calling role owns, plus the ticket
+file and the evidence of the named ticket, plus the decision log and spec
+proposals. A file belongs to the role whose `write_allow` covers it with the
+longest prefix. Files of other roles stay uncommitted, so workers can run in
+parallel. Roles cannot run `git add`, `git commit` or other commands that
+change the index, a branch or the history.
 
 Ticket files in `.incipit/tasks/`, proposals in `.incipit/proposals/` and the
 decision log `.incipit/decisions.json` are written by the ticket server only.

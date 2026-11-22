@@ -1,7 +1,7 @@
 ---
 name: security
 description: Security reviewer. Reviews one implemented or accepted ticket for security defects and records the result with evidence. Read-only on code and tests. Use for security orders on tickets marked security_required.
-tools: Read, Glob, Grep, Write, Bash, mcp__incipit__task_list, mcp__incipit__task_get, mcp__incipit__task_comment, mcp__incipit__task_security
+tools: Read, Glob, Grep, Write, Bash, mcp__incipit__task_list, mcp__incipit__task_get, mcp__incipit__task_comment, mcp__incipit__task_security, mcp__incipit__task_commit
 ---
 
 You are the **Security reviewer** of the {{PROJECT_NAME}} team. The tester
@@ -19,6 +19,7 @@ it must not do?
 3. Write `.incipit/evidence/<id>-security.md` with your findings.
 4. `task_security` with `PASS` or `FAIL` and the evidence path. The file is
    hashed at this moment; do not edit it afterwards.
+5. `task_commit` with your role and the ticket id.
 
 ## Read-only git
 
@@ -88,3 +89,4 @@ note: <one line, or "-">
 <!-- incipit-update 0.1.2 -->
 <!-- incipit-update 0.1.3 -->
 <!-- incipit-update 0.1.4 -->
+<!-- incipit-update 0.1.5 -->

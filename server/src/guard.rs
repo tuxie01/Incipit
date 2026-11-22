@@ -247,7 +247,11 @@ fn check_bash(command: &str, role: &Option<String>) -> Decision {
     }
     // git configuration decides which programs git runs (hooks, pagers,
     // diff drivers) for every role that commits after this one.
-    let words: Vec<&str> = cmd.split_whitespace().collect();
+    let words: Vec<&str> = cmd.split(|c: char| c.is_whitespace() || c == ';' || c == '&' || c == '|').filter(|w| !w.is_empty()).collect();
+    // Commits go through task_commit, which takes only the role's own files.
+    if words.windows(2).any(|w| w[0].ends_with("git") && matches!(w[1], "add" | "commit" | "stash" | "reset" | "rm" | "mv" | "checkout" | "restore" | "clean" | "switch" | "rebase" | "merge" | "cherry-pick" | "revert" | "am" | "apply" | "push")) {
+        return deny("Roles do not change the git index, branches or history directly. Commit through the task_commit tool; it takes only your own files.");
+    }
     if words.windows(2).any(|w| w[0].ends_with("git") && (w[1] == "config" || w[1] == "-c" || w[1].starts_with("--config-env"))) {
         return deny("Changing git configuration is owner-only.");
     }

@@ -13,7 +13,7 @@ einen Lead-Agenten. Ab dann läuft die Arbeit über Tickets. Ein Ticket-Server
 entscheidet, wer was darf: Nur der Tester kann ein Ticket schließen, und nur
 mit hinterlegter Evidenz.
 
-Version 0.1.4.
+Version 0.1.5.
 
 ## Inhalt
 
@@ -327,6 +327,7 @@ Quittungen und meldet jede Evidenzdatei, die fehlt oder geändert wurde.
 | `spec_propose` | architect | Spec-Änderung vorschlagen |
 | `decision_log` | lead | ans Entscheidungslog anhängen |
 | `decision_list` | alle | Entscheidungslog lesen |
+| `task_commit` | alle außer dem Lead | eigene Dateien und Ticket-Stand committen |
 
 ## 7. Änderungen an der Spec
 
@@ -442,8 +443,9 @@ Shell-Operatoren genau ein Programm mit seinen Argumenten ist.
 
 **git selbst.** Keine Rolle darf die git-Konfiguration ändern (`git config`,
 `git -c`) oder unter `.git/` schreiben, denn die git-Konfiguration bestimmt,
-welche Programme git ausführt, etwa Hooks, und zwar für jede Rolle, die
-danach committet.
+welche Programme git ausführt, etwa Hooks. Auch Rollen mit voller Shell können
+Index, Branches und Historie nicht ändern (`add`, `commit`, `checkout`,
+`reset`, `stash`, `push` und ähnliche); Commits laufen über `task_commit`.
 
 Was exakt ist und was nicht:
 
@@ -542,8 +544,14 @@ selben Ticket und jeden Wunsch, eine Prüfung abzuschwächen. Manche Schritte
 liegen allein bei dir, und der Lead nennt dir den Befehl: ein Ticket
 zurückziehen, einen Spec-Vorschlag übernehmen.
 
-Implementierer und Tester committen mit `git add -A`. Das nimmt den
-Ticket-Stand und die Dokumente der Rollen ohne Shell mit.
+Jeder Worker committet seine eigene Arbeit mit `task_commit`. Der Server nimmt
+nur die Dateien, die nach den Schreibregeln zur aufrufenden Rolle gehören
+(eine Datei gehört der Rolle mit dem längsten passenden `write_allow`-Präfix),
+dazu die Ticket-Datei und die Evidenz des genannten Tickets. Dateien anderer
+Rollen bleiben uncommittet, sodass Worker parallel laufen können und der
+Commit eines Tickets nur enthält, was dazugehört. `git add`, `git commit` und
+andere Befehle, die Index, Branches oder Historie ändern, sind für Rollen
+gesperrt.
 
 `/incipit:feedback` fragt eine Session, wo das Plugin selbst im Weg war.
 
