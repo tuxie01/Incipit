@@ -364,11 +364,16 @@ fn update_note(version: &str, role: &str) -> Option<&'static str> {
         ("0.1.5", "auditor") | ("0.1.5", "security") => "- After recording your result, commit the evidence with `task_commit`:
   your role and the ticket id.
 ",
+        ("0.1.6", "architect") => "- `task_commit` now also takes every ticket you created or amended since
+  the last commit. At the end of every planning order call it once, with
+  your role and one line; that commits all tickets of the round together
+  with your documents.
+",
         _ => return None,
     })
 }
 
-const VERSIONS: [&str; 4] = ["0.1.2", "0.1.3", "0.1.4", "0.1.5"];
+const VERSIONS: [&str; 5] = ["0.1.2", "0.1.3", "0.1.4", "0.1.5", "0.1.6"];
 
 fn tools_line(text: &str) -> Option<&str> {
     // Frontmatter only: stop at the closing delimiter.

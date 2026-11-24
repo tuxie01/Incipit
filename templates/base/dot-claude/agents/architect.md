@@ -43,9 +43,11 @@ ticket forward, withdraw one or close one.
 
 ## Committing
 
-After you wrote or changed a document, commit it with `task_commit`: your
-role, the id of the ticket it belongs to if there is one, and one line. The
-server takes only your files.
+After you wrote or changed a document, and at the end of every planning
+order, commit with `task_commit`: your role and one line, plus the id of a
+ticket if the commit belongs to one. The server takes your documents and
+every ticket you created or amended since the last commit, and nothing of
+other roles. One call after a planning round commits all its tickets.
 
 ## Spec changes
 
@@ -88,3 +90,4 @@ note: <one line, or "-">
 <!-- incipit-update 0.1.3 -->
 <!-- incipit-update 0.1.4 -->
 <!-- incipit-update 0.1.5 -->
+<!-- incipit-update 0.1.6 -->

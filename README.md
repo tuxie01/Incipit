@@ -12,7 +12,7 @@ checks whether the goal is reached, and hands the project to a lead agent.
 From then on the work runs on tickets. A ticket server decides who may do
 what: only the tester can close a ticket, and only with recorded evidence.
 
-Version 0.1.5.
+Version 0.1.6.
 
 ## Contents
 
@@ -288,8 +288,9 @@ Verdicts, audits and reviews need a non-empty evidence file below
 
 Closing writes a receipt into the ticket:
 
-- the git commit, and whether the working tree was clean (ticket files and
-  proposals are left out of that check, because the server changes them),
+- the git commit, and whether the working tree was clean (ticket files,
+  proposals and the decision log are left out of that check, because the
+  server changes them),
 - each evidence file with its hash,
 - a hash over the ticket's title, scope, criteria and amendments.
 
@@ -524,7 +525,9 @@ proposal.
 Every worker commits its own work with `task_commit`. The server takes only
 the files that belong to the calling role, by the write rules (the role with
 the longest matching `write_allow` prefix owns a file), plus the ticket file
-and the evidence of the named ticket. Files of other roles stay uncommitted,
+and the evidence of the named ticket, plus every ticket the role recorded
+something in since the last commit. One call after a planning round thus
+commits all tickets the architect created or amended. Files of other roles stay uncommitted,
 so workers can run side by side and a ticket's commit holds only what belongs
 to it. Roles cannot run `git add`, `git commit` or other commands that change
 the index, a branch or the history.

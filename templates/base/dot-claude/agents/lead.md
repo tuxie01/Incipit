@@ -133,3 +133,4 @@ briefly: what was finished, what is next, what needs a decision.
 <!-- incipit-update 0.1.3 -->
 <!-- incipit-update 0.1.4 -->
 <!-- incipit-update 0.1.5 -->
+<!-- incipit-update 0.1.6 -->

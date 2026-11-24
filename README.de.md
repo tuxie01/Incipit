@@ -13,7 +13,7 @@ einen Lead-Agenten. Ab dann läuft die Arbeit über Tickets. Ein Ticket-Server
 entscheidet, wer was darf: Nur der Tester kann ein Ticket schließen, und nur
 mit hinterlegter Evidenz.
 
-Version 0.1.5.
+Version 0.1.6.
 
 ## Inhalt
 
@@ -302,9 +302,9 @@ Urteile, Audits und Prüfungen brauchen eine nicht leere Evidenzdatei unter
 
 Beim Schließen schreibt der Server eine Quittung ins Ticket:
 
-- den Git-Commit und ob das Arbeitsverzeichnis sauber war (Ticket-Dateien
-  und Vorschläge bleiben bei dieser Prüfung außen vor, weil der Server sie
-  selbst ändert),
+- den Git-Commit und ob das Arbeitsverzeichnis sauber war (Ticket-Dateien,
+  Vorschläge und das Entscheidungslog bleiben bei dieser Prüfung außen vor,
+  weil der Server sie selbst ändert),
 - jede Evidenzdatei mit ihrem Hash,
 - einen Hash über Titel, Scope, Kriterien und Ergänzungen des Tickets.
 
@@ -547,7 +547,10 @@ zurückziehen, einen Spec-Vorschlag übernehmen.
 Jeder Worker committet seine eigene Arbeit mit `task_commit`. Der Server nimmt
 nur die Dateien, die nach den Schreibregeln zur aufrufenden Rolle gehören
 (eine Datei gehört der Rolle mit dem längsten passenden `write_allow`-Präfix),
-dazu die Ticket-Datei und die Evidenz des genannten Tickets. Dateien anderer
+dazu die Ticket-Datei und die Evidenz des genannten Tickets sowie jedes
+Ticket, in das die Rolle seit dem letzten Commit etwas eingetragen hat. Ein
+Aufruf nach einer Planungsrunde committet so alle Tickets, die der Architect
+angelegt oder ergänzt hat. Dateien anderer
 Rollen bleiben uncommittet, sodass Worker parallel laufen können und der
 Commit eines Tickets nur enthält, was dazugehört. `git add`, `git commit` und
 andere Befehle, die Index, Branches oder Historie ändern, sind für Rollen

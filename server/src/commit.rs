@@ -10,6 +10,10 @@
 //! by every tied role. Files below `.incipit/` belong to no role: the ticket
 //! file and the evidence go with their ticket, and the server's own shared
 //! state (decision log, spec proposals) goes with every commit.
+//!
+//! A ticket file also goes with the commit of every role that recorded
+//! something in it since the last commit, so the architect commits the
+//! tickets it created or amended in a planning round without naming them.
 
 use crate::config::{self, RoleRules};
 use crate::tools::one_line;
@@ -112,18 +116,55 @@ fn belongs_to_ticket(path: &str, id: &str) -> bool {
     name.starts_with(&format!("{id}-")) || name.starts_with(&format!("{id}."))
 }
 
-/// Which of `changed` a commit of `role` for ticket `id` takes, and which it leaves.
+/// Roles that recorded an event in a ticket since the last commit: the events
+/// of the working copy beyond those in `HEAD`. Tickets only grow, so the
+/// committed history is a prefix of the current one.
+fn new_event_roles(root: &Path, path: &str) -> Vec<String> {
+    let events = |raw: &str| -> Option<Vec<String>> {
+        let v: Value = serde_json::from_str(raw).ok()?;
+        Some(
+            v.get("history")?
+                .as_array()?
+                .iter()
+                .map(|e| e.get("role").and_then(Value::as_str).unwrap_or("").to_string())
+                .collect(),
+        )
+    };
+    let now = match std::fs::read_to_string(root.join(path)).ok().and_then(|r| events(&r)) {
+        Some(e) => e,
+        None => return Vec::new(),
+    };
+    let committed = git(root, &["show", &format!("HEAD:{path}")])
+        .ok()
+        .and_then(|r| events(&r))
+        .map(|e| e.len())
+        .unwrap_or(0);
+    now.into_iter().skip(committed).collect()
+}
+
+fn is_ticket_file(path: &str) -> bool {
+    path.strip_prefix(".incipit/tasks/")
+        .and_then(|name| name.strip_suffix(".json"))
+        .map(crate::store::valid_id)
+        .unwrap_or(false)
+}
+
+/// Which of `changed` a commit of `role` for ticket `id` takes, and which it
+/// leaves. `touched` are the ticket files the role recorded something in
+/// since the last commit.
 pub fn select(
     changed: &[String],
     role: &str,
     id: Option<&str>,
     roles: &BTreeMap<String, RoleRules>,
+    touched: &[String],
 ) -> (Vec<String>, Vec<String>) {
     let mut take = Vec::new();
     let mut leave = Vec::new();
     for path in changed {
         let mine = owners(path, roles).iter().any(|o| o == role)
             || id.map_or(false, |id| belongs_to_ticket(path, id))
+            || touched.iter().any(|t| t == path)
             || SHARED_STATE.iter().any(|p| under(path, p));
         if mine {
             take.push(path.clone());
@@ -173,7 +214,13 @@ pub fn commit(root: &Path, store: &dyn crate::store::Backend, args: &Value) -> R
         return Err(format!("the role '{role}' has no rules in .incipit/config.json"));
     }
     let changed = changed_paths(root)?;
-    let (take, leave) = select(&changed, role, id, &roles);
+    let touched: Vec<String> = changed
+        .iter()
+        .filter(|p| is_ticket_file(p))
+        .filter(|p| new_event_roles(root, p).iter().any(|r| r == role))
+        .cloned()
+        .collect();
+    let (take, leave) = select(&changed, role, id, &roles, &touched);
     let own_work = take.iter().any(|p| !SHARED_STATE.iter().any(|s| under(p, s)));
     if !own_work {
         let mut msg = format!("nothing of the {role} role to commit");
@@ -260,11 +307,16 @@ mod tests {
         .iter()
         .map(|s| s.to_string())
         .collect();
-        let (take, leave) = select(&changed, "implementer", Some("T-0012"), &r);
+        let (take, leave) = select(&changed, "implementer", Some("T-0012"), &r, &[]);
         assert_eq!(take, vec!["src/main.c", ".incipit/tasks/T-0012.json", ".incipit/evidence/T-0012-test.md", ".incipit/decisions.json"]);
         assert_eq!(leave.len(), 4);
-        let (take, _) = select(&changed, "researcher", None, &r);
+        let (take, _) = select(&changed, "researcher", None, &r, &[]);
         assert_eq!(take, vec!["docs/research/thing.md", ".incipit/decisions.json"]);
+        let touched = vec![".incipit/tasks/T-0008.json".to_string()];
+        let (take, _) = select(&changed, "architect", None, &r, &touched);
+        assert_eq!(take, vec!["docs/design/sys.md", ".incipit/tasks/T-0008.json", ".incipit/decisions.json"]);
+        assert!(is_ticket_file(".incipit/tasks/T-0008.json"));
+        assert!(!is_ticket_file(".incipit/tasks/.lock"));
         assert!(!belongs_to_ticket(".incipit/evidence/T-00123-test.md", "T-0012"));
     }
 }

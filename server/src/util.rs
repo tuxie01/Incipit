@@ -36,8 +36,9 @@ pub fn sha256_hex(bytes: &[u8]) -> String {
     digest.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// Current commit and whether the working tree is clean. Ticket files and
-/// proposals are left out: the server itself changes them all the time.
+/// Current commit and whether the working tree is clean. Ticket files,
+/// proposals and the decision log are left out: the server itself changes
+/// them all the time.
 pub fn git_state(root: &Path) -> (String, String) {
     use std::process::Command;
     let run = |args: &[&str]| {
@@ -61,6 +62,7 @@ pub fn git_state(root: &Path) -> (String, String) {
         ".",
         ":(exclude).incipit/tasks",
         ":(exclude).incipit/proposals",
+        ":(exclude).incipit/decisions.json",
     ]) {
         Some(out) if out.is_empty() => "yes",
         Some(_) => "no",

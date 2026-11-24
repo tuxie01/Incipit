@@ -206,7 +206,9 @@ if command -v git >/dev/null 2>&1; then
   git -C "$WORK" -c user.name=t -c user.email=t@t add -A >/dev/null 2>&1
   git -C "$WORK" -c user.name=t -c user.email=t@t commit -qm "T-0007: evidence"
   call task_verdict '{"id":"T-0007","verdict":"PASS","evidence":".incipit/evidence/T-0007-test.md"}' >/dev/null
-  expect "ticket files alone do not make the tree dirty" 'tree clean: yes' "$(call task_close '{"id":"T-0007"}')"
+  call decision_log '{"kind":"note","text":"logged before closing"}' >/dev/null
+  expect "ticket files and the decision log do not make the tree dirty" 'tree clean: yes' "$(call task_close '{"id":"T-0007"}')"
+  rm -f "$WORK/.incipit/decisions.json"   # the decision-log section below starts from an empty log
   rm -rf "$WORK/.git"
 fi
 
@@ -553,6 +555,25 @@ if command -v git >/dev/null 2>&1; then
   git -C "$WORK" reset -q 2>/dev/null
   expect "a deletion is committed" 'committed ' "$(call task_commit "{\"role\":\"implementer\",\"id\":\"$CID\",\"message\":\"Remove new.c\"}")"
   case "$(git -C "$WORK" ls-files src/new.c)" in "") ok ;; *) bad "deleted file is gone from the repository" "still tracked" ;; esac
+  # tickets the architect created or amended go with its commit
+  git -C "$WORK" add -A >/dev/null 2>&1; git -C "$WORK" commit -qm "owner: clean state"
+  call task_status "{\"id\":\"$CID\",\"role\":\"implementer\",\"status\":\"in_progress\"}" >/dev/null
+  A1="$(call task_create '{"title":"Planned one","scope":"s","spec_ref":"SPEC.md#5","acceptance":["a"]}' | sed -n 's/.*created \(T-[0-9]*\).*/\1/p')"
+  A2="$(call task_create '{"title":"Planned two","scope":"s","spec_ref":"SPEC.md#5","acceptance":["a"]}' | sed -n 's/.*created \(T-[0-9]*\).*/\1/p')"
+  call task_status "{\"id\":\"$A2\",\"role\":\"implementer\",\"status\":\"in_progress\"}" >/dev/null
+  call decision_log '{"kind":"note","text":"planning round done"}' >/dev/null
+  out="$(call task_commit '{"role":"architect","message":"Planning round"}')"
+  expect "architect commits the tickets it created" ".incipit/tasks/$A1.json" "$out"
+  expect "a ticket also changed by another role still goes with the architect" ".incipit/tasks/$A2.json" "$out"
+  files="$(git -C "$WORK" show --name-only --format= HEAD)"
+  case "$files" in *"$CID.json"*) bad "a ticket only another role changed stays out" "$files" ;; *) ok ;; esac
+  call task_amend "{\"id\":\"$A1\",\"clarification\":\"recut note\"}" >/dev/null
+  expect "an amended, committed ticket goes with the next commit" ".incipit/tasks/$A1.json" "$(call task_commit '{"role":"architect","message":"Amend"}')"
+  call task_status "{\"id\":\"$A2\",\"role\":\"implementer\",\"status\":\"blocked\",\"note\":\"waits\"}" >/dev/null
+  refuse "architect does not commit a ticket only another role changed" "$(call task_commit '{"role":"architect","message":"nothing new"}')"
+  out="$(call task_commit '{"role":"implementer","message":"Status changes"}')"
+  expect "implementer commits its status changes" ".incipit/tasks/$A2.json" "$out"
+  expect "and the other ticket it moved" ".incipit/tasks/$CID.json" "$out"
   echo staged-by-someone > "$WORK/docs/design/other.md"
   git -C "$WORK" add docs/design/other.md
   echo more > "$WORK/src/more.c"

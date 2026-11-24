@@ -123,8 +123,10 @@ Workers commit through `task_commit`, before they report: the implementer
 before `implemented`, the tester before the verdict and once more after
 closing, everyone else after writing a document or evidence. The server
 stages only the changed files that the calling role owns, plus the ticket
-file and the evidence of the named ticket, plus the decision log and spec
-proposals. A file belongs to the role whose `write_allow` covers it with the
+file and the evidence of the named ticket, plus every ticket file the calling
+role recorded something in since the last commit (so one call after a
+planning round commits all tickets the architect created or amended), plus
+the decision log and spec proposals. A file belongs to the role whose `write_allow` covers it with the
 longest prefix. Files of other roles stay uncommitted, so workers can run in
 parallel. Roles cannot run `git add`, `git commit` or other commands that
 change the index, a branch or the history.
